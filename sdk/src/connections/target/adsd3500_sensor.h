@@ -87,6 +87,8 @@ class Adsd3500Sensor : public aditof::DepthSensorInterface,
     virtual aditof::Status
     adsd3500_write_payload(uint8_t *payload, uint16_t payload_len) override;
 
+    virtual aditof::Status releaseFrame(uint16_t **buffer) override;
+
   public: // implements V4lBufferAccessInterface
     // Methods that give a finer control than getFrame()
     // And worksif there is only one v4lbuffer (if many, then I don't know, maybe restructure this interface)
@@ -100,6 +102,7 @@ class Adsd3500Sensor : public aditof::DepthSensorInterface,
     enqueueInternalBuffer(struct v4l2_buffer &buf) override;
     virtual aditof::Status
     getDeviceFileDescriptor(int &fileDescriptor) override;
+    virtual aditof::Status getFrame(uint16_t **buffer) override;
 
   private:
     aditof::Status writeConfigBlock(const uint32_t offset);

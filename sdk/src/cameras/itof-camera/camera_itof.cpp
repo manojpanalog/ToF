@@ -670,6 +670,15 @@ aditof::Status setAttributesByMode(aditof::Frame &frame,
     return status;
 }
 
+aditof::Status CameraItof::releaseFrame(uint16_t **buffer) {
+    using namespace aditof;
+    
+    if (buffer == nullptr) {
+        return Status::INVALID_ARGUMENT;
+    }
+    return m_depthSensor->releaseFrame(buffer);
+}
+
 aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
                                         aditof::FrameUpdateCallback /*cb*/) {
     using namespace aditof;
@@ -679,6 +688,7 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
     ModeInfo::modeInfo aModeInfo;
 
     if (frame == nullptr) {
+        m_depthSensor->releaseFrame(0);
         return Status::INVALID_ARGUMENT;
     }
 
@@ -707,21 +717,25 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
     uint16_t *frameDataLocation = nullptr;
     if ((m_details.frameType.type == "pcm")) {
         frame->getData("ir", &frameDataLocation);
+        if (frameDataLocation == 0) {
+            LOG(WARNING) << "getframe failed to allocated valid frame";
+            return status;
+        }
     } else if (m_details.frameType.type == "") {
         LOG(ERROR) << "Frame type not found!";
         return Status::INVALID_ARGUMENT;
     } else {
         frame->getData("raw", &frameDataLocation);
     }
-    if (!frameDataLocation) {
-        LOG(WARNING) << "getframe failed to allocated valid frame";
-        return status;
-    }
 
-    status = m_depthSensor->getFrame(frameDataLocation);
+    uint16_t *ptrRaw;
+    status = m_depthSensor->getFrame(&ptrRaw);
     if (status != Status::OK) {
         LOG(WARNING) << "Failed to get frame from device";
     }
+
+    frame->setRawPtr(ptrRaw);
+    frame->getData("raw", &frameDataLocation);
 
     if (!m_adsd3500Enabled && !m_isOffline) {
         for (unsigned int i = 0;
@@ -770,7 +784,6 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
         }
 
         m_tofi_compute_context->p_depth_frame = tempDepthFrame;
-        m_tofi_compute_context->p_ab_frame = tempAbFrame;
         m_tofi_compute_context->p_xyz_frame = (int16_t *)tempXyzFrame;
         // m_tofi_compute_context->p_conf_frame = (float *)tempConfFrame;
 

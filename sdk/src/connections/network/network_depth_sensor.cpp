@@ -370,6 +370,10 @@ aditof::Status NetworkDepthSensor::program(const uint8_t *firmware,
     return status;
 }
 
+aditof::Status NetworkDepthSensor::getFrame(uint16_t **buffer) {
+    return aditof::Status::OK;
+}
+
 aditof::Status NetworkDepthSensor::getFrame(uint16_t *buffer) {
     using namespace aditof;
 
@@ -411,6 +415,10 @@ aditof::Status NetworkDepthSensor::getFrame(uint16_t *buffer) {
            net->recv_buff[m_sensorIndex].bytes_payload(0).length());
 
     return status;
+}
+
+aditof::Status NetworkDepthSensor::releaseFrame(uint16_t **buffer) {
+    return aditof::Status::OK;
 }
 
 aditof::Status NetworkDepthSensor::readRegisters(const uint16_t *address,

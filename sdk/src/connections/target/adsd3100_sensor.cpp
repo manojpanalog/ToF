@@ -698,6 +698,14 @@ void saveFrame(std::string id, char *data, size_t size) {
     g.close();
 }
 
+aditof::Status Adsd3100Sensor::getFrame(uint16_t **buffer) {
+    return aditof::Status::OK;
+}
+
+aditof::Status Adsd3100Sensor::releaseFrame(uint16_t **buffer) {
+    return aditof::Status::OK;
+}
+
 aditof::Status Adsd3100Sensor::getFrame(uint16_t *buffer) {
     using namespace aditof;
     struct v4l2_buffer buf[MAX_SUBFRAMES_COUNT];

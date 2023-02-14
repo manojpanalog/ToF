@@ -52,6 +52,7 @@ class NetworkDepthSensor : public aditof::DepthSensorInterface {
     virtual aditof::Status program(const uint8_t *firmware,
                                    size_t size) override;
     virtual aditof::Status getFrame(uint16_t *buffer) override;
+    virtual aditof::Status getFrame(uint16_t **buffer) override;
     virtual aditof::Status readRegisters(const uint16_t *address,
                                          uint16_t *data, size_t length,
                                          bool burst = true) override;
@@ -83,7 +84,8 @@ class NetworkDepthSensor : public aditof::DepthSensorInterface {
                                uint16_t payload_len) override;
     virtual aditof::Status
     adsd3500_write_payload(uint8_t *payload, uint16_t payload_len) override;
-
+    virtual aditof::Status releaseFrame(uint16_t **buffer) override;
+    
   private:
     struct ImplData;
     std::string m_sensorName;

@@ -140,6 +140,14 @@ aditof::Status FrameImpl::getData(const std::string &dataType,
     return Status::OK;
 }
 
+aditof::Status FrameImpl::setRawPtr(uint16_t *rawPtr) {
+    if (m_implData->m_dataLocations.count("raw") > 0) {
+        m_implData->m_dataLocations["raw"] = (uint16_t *)rawPtr;
+        return aditof::Status::OK;
+    }
+    return aditof::Status::OK;
+}
+
 template <typename IntType>
 aditof::Status FrameImpl::getIntAttribute(const std::string &attribute_key,
                                           IntType &attribute_value) {
@@ -199,6 +207,8 @@ void FrameImpl::allocFrameData(const aditof::FrameDetails &details) {
         } else if (frameDetail.type == "xyz") {
             return (unsigned long int)(frameDetail.height * frameDetail.width *
                                        sizeof(Point3I));
+        } else if (frameDetail.type == "raw") {         // Andre: ADSD3500 only, update for ADSD3100 case.
+            return (unsigned long int)0;
         } else {
             return (unsigned long int)frameDetail.height * frameDetail.width;
         }
@@ -216,10 +226,15 @@ void FrameImpl::allocFrameData(const aditof::FrameDetails &details) {
     m_implData->m_dataLocations.emplace(
         "frameData", m_implData->m_allData.get()); //frame data
     for (FrameDataDetails frameDetail : details.dataDetails) {
-        m_implData->m_dataLocations.emplace(
-            frameDetail.type, m_implData->m_allData.get() + pos); //raw data
+        if (frameDetail.type != "raw") { 
+            m_implData->m_dataLocations.emplace(
+                frameDetail.type, m_implData->m_allData.get() + pos);
 
-        pos += getSubframeSize(frameDetail);
+            pos += getSubframeSize(frameDetail);
+        } else {
+            m_implData->m_dataLocations.emplace(
+                frameDetail.type, nullptr);
+        }
     }
 }
 

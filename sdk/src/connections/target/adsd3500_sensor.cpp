@@ -32,7 +32,7 @@
 #define MAX_SUBFRAMES_COUNT                                                    \
     10 // maximum number of subframes that are used to create a full frame (maximum total_captures of all modes)
 #define EXTRA_BUFFERS_COUNT                                                    \
-    3 // how many extra buffers are sent to the driver in addition to the total_captures of a mode
+    10 // how many extra buffers are sent to the driver in addition to the total_captures of a mode
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
@@ -104,6 +104,9 @@ struct Adsd3500Sensor::ImplData {
     ImagerType imagerType;
     CCBVersion ccbVersion;
     std::string fw_ver;
+
+    std::unordered_map<uint16_t *, uint16_t *> usedV4L2Bufs;
+    std::queue<struct v4l2_buffer *> ptrBufQ;
 
     ImplData()
         : numVideoDevs(1), videoDevs(nullptr), frameType{"", {}, 0, 0},
@@ -663,40 +666,73 @@ aditof::Status Adsd3500Sensor::program(const uint8_t *firmware, size_t size) {
 }
 
 aditof::Status Adsd3500Sensor::getFrame(uint16_t *buffer) {
+    return aditof::Status::GENERIC_ERROR;
+}
+
+aditof::Status Adsd3500Sensor::getFrame(uint16_t **buffer) {
 
     using namespace aditof;
-    struct v4l2_buffer buf[MAX_SUBFRAMES_COUNT];
+    struct v4l2_buffer *buf = new struct v4l2_buffer[MAX_SUBFRAMES_COUNT];
     struct VideoDev *dev;
     Status status;
     unsigned int buf_data_len;
     uint8_t *pdata;
+
     dev = &m_implData->videoDevs[0];
     m_capturesPerFrame = 1;
     for (int idx = 0; idx < m_capturesPerFrame; idx++) {
         status = waitForBufferPrivate(dev);
         if (status != Status::OK) {
+            delete[] buf;
             return status;
         }
 
         status = dequeueInternalBufferPrivate(buf[idx], dev);
         if (status != Status::OK) {
+            delete[] buf;
             return status;
         }
 
         status = getInternalBufferPrivate(&pdata, buf_data_len, buf[idx], dev);
         if (status != Status::OK) {
+            delete[] buf;
             return status;
         }
 
-        memcpy(buffer, pdata, buf_data_len);
+        *buffer = (uint16_t *)pdata;
+    }
+    m_implData->ptrBufQ.push(buf);
 
-        status = enqueueInternalBufferPrivate(buf[idx], dev);
+    return status;
+}
+
+aditof::Status Adsd3500Sensor::releaseFrame(uint16_t **buffer) {
+
+    using namespace aditof;
+    Status status;
+    struct VideoDev *dev;
+
+    if (m_implData->ptrBufQ.empty()) {
+        return Status::GENERIC_ERROR;
+    }
+
+    dev = &m_implData->videoDevs[0];
+    m_capturesPerFrame = 1;
+    
+    struct v4l2_buffer *ptrBuf;
+
+    ptrBuf = (struct v4l2_buffer *)m_implData->ptrBufQ.front();
+    m_implData->ptrBufQ.pop();
+
+    for (int idx = 0; idx < m_capturesPerFrame; idx++) {
+        status = enqueueInternalBufferPrivate(ptrBuf[idx], dev);
         if (status != Status::OK) {
+            delete[] ptrBuf;
             return status;
         }
     }
-
-    return status;
+    delete[] ptrBuf;
+    return Status::OK;
 }
 
 aditof::Status Adsd3500Sensor::readRegisters(const uint16_t *address,

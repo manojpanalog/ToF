@@ -36,6 +36,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <linux/videodev2.h>
+#include <queue>
 
 namespace aditof {
 

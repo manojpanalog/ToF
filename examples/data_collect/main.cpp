@@ -35,7 +35,7 @@
 #endif
 
 #define MULTI_THREADED 1
-#define DATA_COLLECT_VERSION "1.3.0"
+#define DATA_COLLECT_VERSION "1.4.0"
 #define EMBED_HDR_LENGTH 128
 
 enum : uint16_t {
@@ -69,6 +69,7 @@ typedef struct thread_params {
     const char *pFrame_type;
     const char *nFileTime;
     fsf_params *pFsfParams;
+    std::shared_ptr<aditof::Camera> camera;
 } thread_params;
 
 static const char kUsagePublic[] =
@@ -720,11 +721,13 @@ int main(int argc, char *argv[]) {
 
         /* Since getData returns the pointer to the depth/raw data, which only main thread has access to,
             we need to copy depth frame to local memory and pass that to thread for file I/O, there is no drop in the throughput with this. */
+        /* 
         frameBuffer = new uint16_t[frame_size];
         if (frameBuffer == NULL) {
             LOG(ERROR) << "Can't allocate Memory for frame type data!";
             return 0;
         }
+        */
 
         uint16_t *pData;
         status = frame.getData(frameType, &pData);
@@ -736,7 +739,8 @@ int main(int argc, char *argv[]) {
             LOG(ERROR) << "no memory allocated in frame";
             return 0;
         }
-        memcpy(frameBuffer, (uint8_t *)pData, frame_size);
+        //memcpy(frameBuffer, (uint8_t *)pData, frame_size);
+        frameBuffer = (uint16_t *)pData;
 
         uint32_t header_data_size = EMBED_HDR_LENGTH * subFrames;
         headerBuffer = new uint8_t[header_data_size];
@@ -744,6 +748,24 @@ int main(int argc, char *argv[]) {
             LOG(ERROR) << "Can't allocate Memory for frame header data!";
             return 0;
         }
+
+        //geting temperature vlues
+#if 0
+        uint16_t sensorTmp;
+        uint16_t laserTmp;
+        status = camera->adsd3500GetSensorTemperature(sensorTmp);
+        if (status != Status::OK) {
+            LOG(INFO) << "Could not request sensor temperature values!";
+        }
+
+        status = camera->adsd3500GetLaserTemperature(laserTmp);
+        if (status != Status::OK) {
+            LOG(INFO) << "Could not request laser temperature values!";
+        }
+
+        LOG(INFO) << "Sensor temperature: "<<sensorTmp<<std::endl;
+        LOG(INFO) << "Laser temperature: "<<laserTmp<<std::endl;
+#endif
 
 #if 0 // TO DO: uncomment this one the header becomes available
         uint16_t *pHeader = nullptr;
@@ -776,6 +798,7 @@ int main(int argc, char *argv[]) {
         pThreadParams->pFrame_type = frame_type.c_str();
         pThreadParams->pFsfParams = (fsf_flag) ? &Fsfparams : NULL;
         pThreadParams->pFramesize = height * width;
+        pThreadParams->camera = camera;
 
         /* fileWriterThread handles the copying of raw/depth frames to a file */
         std::thread fileWriterThread(
@@ -812,13 +835,15 @@ int main(int argc, char *argv[]) {
                     loopcount, static_cast<uint32_t>(i), Fsfparams.streams[i]);
             }
         }
-
+        /*
         if (frameBuffer != NULL) {
             free((void *)frameBuffer);
         }
+        */
         if (headerBuffer != NULL) {
             free((void *)headerBuffer);
         }
+        status = camera->requestFrame(0);
 #endif
     } // End of for Loop
 
@@ -830,6 +855,7 @@ int main(int argc, char *argv[]) {
             LOG(INFO) << "FPS: " << fps;
         }
     }
+    status = camera->requestFrame(0);
 
     fsf_stop(&Fsfparams);
     status = camera->stop();
@@ -859,12 +885,14 @@ void fileWriterTask(const thread_params *const pThreadParams) {
     } else {
         fsf_setstream(pThreadParams);
     }
-
+    /*
     if (pThreadParams->pCaptureData != nullptr) {
         delete[] pThreadParams->pCaptureData;
     }
+    */
     if (pThreadParams->pHeaderData != nullptr) {
         delete[] pThreadParams->pHeaderData;
     }
+    pThreadParams->camera->requestFrame(0);
     delete pThreadParams;
 }

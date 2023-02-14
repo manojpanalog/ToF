@@ -85,4 +85,8 @@ Status Frame::getAttribute(const std::string &attribute,
     return m_impl->getAttribute(attribute, value);
 }
 
+aditof::Status Frame::setRawPtr(uint16_t *rawPtr) {
+    return m_impl->setRawPtr(rawPtr);
+}
+
 } // namespace aditof
