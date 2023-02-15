@@ -688,7 +688,6 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
     ModeInfo::modeInfo aModeInfo;
 
     if (frame == nullptr) {
-        m_depthSensor->releaseFrame(0);
         return Status::INVALID_ARGUMENT;
     }
 

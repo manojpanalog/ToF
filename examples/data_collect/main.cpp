@@ -843,7 +843,7 @@ int main(int argc, char *argv[]) {
         if (headerBuffer != NULL) {
             free((void *)headerBuffer);
         }
-        status = camera->requestFrame(0);
+        status = camera->releaseFrame((uint16_t **)&frameBuffer);
 #endif
     } // End of for Loop
 
@@ -855,7 +855,7 @@ int main(int argc, char *argv[]) {
             LOG(INFO) << "FPS: " << fps;
         }
     }
-    status = camera->requestFrame(0);
+    //status = camera->releaseFrame((uint16_t **)&frameBuffer);
 
     fsf_stop(&Fsfparams);
     status = camera->stop();
@@ -893,6 +893,6 @@ void fileWriterTask(const thread_params *const pThreadParams) {
     if (pThreadParams->pHeaderData != nullptr) {
         delete[] pThreadParams->pHeaderData;
     }
-    pThreadParams->camera->requestFrame(0);
+    pThreadParams->camera->releaseFrame((uint16_t **)&pThreadParams->pCaptureData);
     delete pThreadParams;
 }
