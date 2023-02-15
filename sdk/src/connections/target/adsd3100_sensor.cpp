@@ -702,7 +702,7 @@ aditof::Status Adsd3100Sensor::getFrame(uint16_t **buffer) {
     return aditof::Status::OK;
 }
 
-aditof::Status Adsd3100Sensor::releaseFrame(uint16_t **buffer) {
+aditof::Status Adsd3100Sensor::releaseFrame(uint16_t *buffer) {
     return aditof::Status::OK;
 }
 

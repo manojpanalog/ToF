@@ -425,11 +425,7 @@ aditof::Status NetworkDepthSensor::getFrame(uint16_t **buffer) {
     return status;
 }
 
-aditof::Status NetworkDepthSensor::releaseFrame(uint16_t **buffer) {
-    if (buffer != nullptr) {
-        delete[] *buffer;
-        buffer = 0;
-    }
+aditof::Status NetworkDepthSensor::releaseFrame(uint16_t *buffer) {
     return aditof::Status::OK;
 }
 

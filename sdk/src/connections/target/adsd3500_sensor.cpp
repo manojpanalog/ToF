@@ -706,7 +706,7 @@ aditof::Status Adsd3500Sensor::getFrame(uint16_t **buffer) {
     return status;
 }
 
-aditof::Status Adsd3500Sensor::releaseFrame(uint16_t **buffer) {
+aditof::Status Adsd3500Sensor::releaseFrame(uint16_t *buffer) {
 
     using namespace aditof;
     Status status;

@@ -302,7 +302,7 @@ class SDK_API Camera {
      */
     virtual Status adsd3500GetLaserTemperature(uint16_t &tmpValue) = 0;
 
-    virtual Status releaseFrame(uint16_t **buffer) = 0;
+    virtual Status releaseFrame(uint16_t *buffer) = 0;
 };
 
 } // namespace aditof

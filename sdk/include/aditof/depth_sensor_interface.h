@@ -105,7 +105,7 @@ class DepthSensorInterface {
      */
     virtual aditof::Status getFrame(uint16_t *buffer) = 0;
     virtual aditof::Status getFrame(uint16_t **buffer) = 0;
-    virtual aditof::Status releaseFrame(uint16_t **buffer) = 0;
+    virtual aditof::Status releaseFrame(uint16_t *buffer) = 0;
 
     /**
      * @brief Read multiple registers from AFE.

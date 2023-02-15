@@ -670,7 +670,7 @@ aditof::Status setAttributesByMode(aditof::Frame &frame,
     return status;
 }
 
-aditof::Status CameraItof::releaseFrame(uint16_t **buffer) {
+aditof::Status CameraItof::releaseFrame(uint16_t *buffer) {
     using namespace aditof;
     
     if (buffer == nullptr) {
