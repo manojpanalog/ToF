@@ -232,6 +232,9 @@ void ADIView::render() {
                     static_cast<float>(640.0), static_cast<float>(960.0)};
                 ImGui::Image((void *)(intptr_t)image_texture,
                              sourceImageDimensions);
+
+                frame.getData("raw", &data);
+                camera1->releaseFrame(data);
             }
 
             ImGui::End();
@@ -249,6 +252,13 @@ void ADIView::render() {
 
         glfwSwapBuffers(window);
     }
+}
+
+void ADIView::releaseRawBuffer() {
+    uint16_t *data;
+    std::shared_ptr<aditof::Camera> camera1 = m_ctrl->m_cameras.front();
+    m_capturedFrame->getData("raw", &data);
+    camera1->releaseFrame(data);
 }
 
 void ADIView::_displayIrImage() {
@@ -306,6 +316,7 @@ void ADIView::_displayIrImage() {
         std::unique_lock<std::mutex> imshow_lock(m_imshowMutex);
         m_waitKeyBarrier += 1;
         if (m_waitKeyBarrier == /*2*/ numOfThreads) {
+            releaseRawBuffer();
             imshow_lock.unlock();
             m_barrierCv.notify_one();
         }
@@ -410,6 +421,7 @@ void ADIView::_displayDepthImage() {
         std::unique_lock<std::mutex> imshow_lock(m_imshowMutex);
         m_waitKeyBarrier += 1;
         if (m_waitKeyBarrier == /*2*/ numOfThreads) {
+            releaseRawBuffer();
             imshow_lock.unlock();
             m_barrierCv.notify_one();
         }
@@ -502,6 +514,7 @@ void ADIView::_displayPointCloudImage() {
         std::unique_lock<std::mutex> imshow_lock(m_imshowMutex);
         m_waitKeyBarrier += 1;
         if (m_waitKeyBarrier == numOfThreads) {
+            releaseRawBuffer();
             imshow_lock.unlock();
             m_barrierCv.notify_one();
         }

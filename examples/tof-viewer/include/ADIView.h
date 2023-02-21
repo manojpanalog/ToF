@@ -152,6 +152,8 @@ class ADIView {
     void hsvColorMap(uint16_t video_data, int max, int min, float &fRed,
                      float &fGreen, float &fBlue);
 
+    void releaseRawBuffer();
+
     std::string m_viewName;
     bool m_center;
     int m_distanceVal;
