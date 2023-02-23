@@ -241,6 +241,14 @@ PYBIND11_MODULE(aditofpython, m) {
             py::arg("availableFrameTypes"))
         .def("requestFrame", &aditof::Camera::requestFrame, py::arg("frame"),
              py::arg("cb") = nullptr)
+        .def(
+            "releaseFrame",
+            [](aditof::Camera &camera, uint64_t bid) {
+                uint16_t *ptr;
+                ptr = (uint16_t *)bid;
+                aditof::Status status = camera.releaseFrame(ptr);
+            },
+            py::arg("bid"))
         .def("getDetails", &aditof::Camera::getDetails, py::arg("details"))
         .def(
             "getAvailableControls",
@@ -350,7 +358,18 @@ PYBIND11_MODULE(aditofpython, m) {
 
                 return f;
             },
-            py::arg("dataType"));
+            py::arg("dataType"))
+        .def(
+            "getFrameID",
+            [](aditof::Frame &frame) {
+                uint16_t *ptr = nullptr;
+                aditof::Status status = frame.getData("raw", &ptr);
+                uint64_t bid = 0;
+                if (status == aditof::Status::OK) {
+                    bid = (uint64_t)ptr;
+                }
+                return bid;
+            });
 
     // DepthSensorInterface
     py::class_<aditof::DepthSensorInterface,

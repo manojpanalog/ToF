@@ -676,7 +676,8 @@ aditof::Status CameraItof::releaseFrame(uint16_t *buffer) {
     if (buffer == nullptr) {
         return Status::INVALID_ARGUMENT;
     }
-    return m_depthSensor->releaseFrame(buffer);
+    Status status = m_depthSensor->releaseFrame(buffer);
+    return status;
 }
 
 aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
