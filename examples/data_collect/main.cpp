@@ -893,6 +893,6 @@ void fileWriterTask(const thread_params *const pThreadParams) {
     if (pThreadParams->pHeaderData != nullptr) {
         delete[] pThreadParams->pHeaderData;
     }
-    pThreadParams->camera->releaseFrame((uint16_t **)&pThreadParams->pCaptureData);
+    pThreadParams->camera->releaseFrame((uint16_t *)pThreadParams->pCaptureData);
     delete pThreadParams;
 }
