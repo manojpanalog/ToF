@@ -35,7 +35,7 @@
 #endif
 
 #define MULTI_THREADED 1
-#define DATA_COLLECT_VERSION "1.4.0"
+#define DATA_COLLECT_VERSION "1.4.1"
 #define EMBED_HDR_LENGTH 128
 
 enum : uint16_t {
@@ -843,7 +843,7 @@ int main(int argc, char *argv[]) {
         if (headerBuffer != NULL) {
             free((void *)headerBuffer);
         }
-        status = camera->releaseFrame((uint16_t **)&frameBuffer);
+        status = camera->releaseFrame((uint16_t *)frameBuffer);
 #endif
     } // End of for Loop
 
