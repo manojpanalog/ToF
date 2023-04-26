@@ -130,7 +130,7 @@ class SDK_API Camera {
      * @param cb - Callback to be called when frame is updated
      * @return Status
      */
-    virtual Status requestFrame(Frame *frame,
+    virtual Status requestFrame(Frame *frame, 
                                 FrameUpdateCallback cb = nullptr) = 0;
 
     /**
@@ -309,6 +309,8 @@ class SDK_API Camera {
     */
     virtual Status adsd3500_get_firmware_version(std::string &fwVersion,
                                                  std::string &fwHash) = 0;
+
+    virtual aditof::Status requestStreamFrame(aditof::Frame *frame) = 0;
 };
 
 } // namespace aditof

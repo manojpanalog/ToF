@@ -675,6 +675,108 @@ aditof::Status setAttributesByMode(aditof::Frame &frame,
     return status;
 }
 
+aditof::Status CameraItof::requestStreamFrame(aditof::Frame *frame) {
+    using namespace aditof;
+    if (!m_adsd3500Enabled) {
+        return aditof::Status::GENERIC_ERROR;
+    }
+
+    Status status = Status::OK;
+    std::string totalCapturesStr;
+    uint8_t totalCaptures;
+    ModeInfo::modeInfo aModeInfo;
+
+    if (frame == nullptr) {
+        return Status::INVALID_ARGUMENT;
+    }
+
+    status = getCurrentModeInfo(aModeInfo);
+    if (status != Status::OK) {
+        LOG(WARNING) << "Failed to get mode info";
+        return status;
+    }
+
+    setAttributesByMode(*frame, aModeInfo);
+
+    FrameDetails frameDetails;
+    frame->getDetails(frameDetails);
+
+    if (m_details.frameType != frameDetails) {
+        frame->setDetails(m_details.frameType);
+    }
+
+    if (!m_adsd3500Enabled) {
+        frame->getAttribute("total_captures", totalCapturesStr);
+        totalCaptures = std::atoi(totalCapturesStr.c_str());
+    } else {
+        totalCaptures = 1;
+    }
+
+    uint16_t *frameDataLocation;
+    frame->getData("raw", &frameDataLocation);
+    m_depthSensor->getFrame(frameDataLocation);
+    
+    if ((m_controls["enableDepthCompute"] == "on") &&
+        m_adsd3500Enabled) {
+
+        if (NULL == m_tofi_compute_context) {
+            LOG(ERROR) << "Depth compute libray not initialized";
+            return aditof::Status::GENERIC_ERROR;
+        }
+        uint16_t *tempDepthFrame = m_tofi_compute_context->p_depth_frame;
+        uint16_t *tempAbFrame = m_tofi_compute_context->p_ab_frame;
+        uint16_t *tempXyzFrame =
+            (uint16_t *)m_tofi_compute_context->p_xyz_frame;
+        // uint16_t *tempConfFrame =
+        //     (uint16_t *)m_tofi_compute_context->p_conf_frame; // TO DO: Uncomment this and figure out why depth compute is crashing
+
+        frame->getData("depth", &m_tofi_compute_context->p_depth_frame);
+        frame->getData("ir", &m_tofi_compute_context->p_ab_frame);
+
+        // uint16_t *confFrame;
+        // frame->getData("conf", &confFrame);
+        // m_tofi_compute_context->p_conf_frame = (float *)confFrame; // TO DO: Uncomment this and figure out why depth compute is crashing
+
+        if (m_xyzEnabled) {
+            uint16_t *xyzFrame;
+            frame->getData("xyz", &xyzFrame);
+            m_tofi_compute_context->p_xyz_frame = (int16_t *)xyzFrame;
+        }
+
+        uint32_t ret =
+            TofiCompute(frameDataLocation, m_tofi_compute_context, NULL);
+
+        if (ret != ADI_TOFI_SUCCESS) {
+            LOG(ERROR) << "TofiCompute failed";
+            return aditof::Status::GENERIC_ERROR;
+        }
+
+        m_tofi_compute_context->p_depth_frame = tempDepthFrame;
+        m_tofi_compute_context->p_ab_frame = tempAbFrame;
+        m_tofi_compute_context->p_xyz_frame = (int16_t *)tempXyzFrame;
+        // m_tofi_compute_context->p_conf_frame = (float *)tempConfFrame;
+
+        if (m_adsd3500Enabled && m_abEnabled && (m_adsd3500ImagerType == 1) &&
+                (m_abBitsPerPixel < 16) &&
+                (m_details.frameType.type == "lr-native" ||
+                 m_details.frameType.type == "sr-native") ||
+            m_isOffline) {
+            uint16_t *mpAbFrame;
+            frame->getData("ir", &mpAbFrame);
+
+            //TO DO: shift with 4 because we use only 12 bits
+            uint8_t bitsToShift = 16 - m_abBitsPerPixel;
+            for (unsigned int i = 0;
+                 i < (m_details.frameType.height * m_details.frameType.width);
+                 ++i) {
+                mpAbFrame[i] = mpAbFrame[i] >> bitsToShift;
+            }
+        }
+    }
+
+    return aditof::Status::OK;
+}
+
 aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
                                         aditof::FrameUpdateCallback /*cb*/) {
     using namespace aditof;

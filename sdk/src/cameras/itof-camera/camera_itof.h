@@ -355,6 +355,8 @@ class CameraItof : public aditof::Camera {
     aditof::Status adsd3500_get_firmware_version(std::string &fwVersion,
                                                  std::string &fwHash);
 
+    aditof::Status requestStreamFrame(aditof::Frame *frame);
+
   private:
     using noArgCallable = std::function<aditof::Status()>;
 

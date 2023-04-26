@@ -29,6 +29,12 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <ctime>
+#include <string>
+#include <iomanip>
 #include <aditof/camera.h>
 #include <aditof/frame.h>
 #include <aditof/system.h>
@@ -38,9 +44,56 @@
 #else
 #include <aditof/log.h>
 #endif
-#include <iostream>
 
 using namespace aditof;
+
+#define SAVE_DEPTH_FRAME
+#define SAVE_IR_FRAME
+#define SAVE_RAW_FRAME
+
+static std::string current_local_time_string() {
+    std::time_t raw_time;
+    std::time(&raw_time);
+    std::tm *local_time = std::localtime(&raw_time);
+
+    char buffer[16];
+    strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", local_time);
+    return std::string(buffer);
+}
+
+static double get_seconds() {
+    LARGE_INTEGER time, frequency;
+    QueryPerformanceCounter(&time);
+    QueryPerformanceFrequency(&frequency);
+    return static_cast<double>(time.QuadPart) /
+           static_cast<double>(frequency.QuadPart);
+}
+
+static Status save_frame(aditof::Frame &frame, std::string frameType, std::string nameappend) {
+
+    uint16_t *data1;
+    FrameDataDetails fDetails;
+    Status status = Status::OK;
+
+    status = frame.getData(frameType, &data1);
+    if (status != Status::OK) {
+        LOG(ERROR) << "Could not get frame data " + frameType + "!";
+        return status;
+    }
+
+    if (!data1) {
+        LOG(ERROR) << "no memory allocated in frame";
+        return status;
+    }
+
+    std::ofstream g("out_" + frameType + "_" + nameappend + ".bin",
+                    std::ios::binary);
+    frame.getDataDetails(frameType, fDetails);
+    g.write((char *)data1, fDetails.width * fDetails.height * sizeof(uint16_t));
+    g.close();
+
+    return status;
+}
 
 int main(int argc, char *argv[]) {
 
@@ -53,20 +106,28 @@ int main(int argc, char *argv[]) {
 
     Status status = Status::OK;
 
-    if (argc < 3) {
-        LOG(ERROR) << "No ip or config file provided! ./first-frame-network <ip> <config_file>";
-        return 0;
+    if (argc != 5) {
+        LOG(ERROR) << "No ip or config file provided! " << argv[0] << " <mode> <ip> <JSON config_file>";
+        return -1;
     }
 
-    std::string ip = argv[1];
-    std::string configFile = argv[2];
+    std::string mode = argv[1];
+    uint32_t FRAMES = std::stoi(argv[2]);
+    std::string ip = argv[3];
+    std::string configFile = argv[4];
     System system;
+
+    if (!(mode == "mp" || mode == "qmp")) {
+        LOG(INFO) << "qmp - quarter megapixel mode.";
+        LOG(INFO) << "mp - megapixel mode.";
+        return -2;
+    }
 
     std::vector<std::shared_ptr<Camera>> cameras;
     system.getCameraListAtIp(cameras, ip);
     if (cameras.empty()) {
         LOG(WARNING) << "No cameras found";
-        return 0;
+        return -3;
     }
 
     auto camera = cameras.front();
@@ -74,13 +135,13 @@ int main(int argc, char *argv[]) {
     status = camera->setControl("initialization_config", configFile);
     if(status != Status::OK){
         LOG(ERROR) << "Failed to set control!";
-        return 0;
+        return -4;
     }
 
     status = camera->initialize();
     if (status != Status::OK) {
         LOG(ERROR) << "Could not initialize camera!";
-        return 0;
+        return -5;
     }
 
     aditof::CameraDetails cameraDetails;
@@ -94,47 +155,81 @@ int main(int argc, char *argv[]) {
     camera->getAvailableFrameTypes(frameTypes);
     if (frameTypes.empty()) {
         std::cout << "no frame type available!";
-        return 0;
+        return -6;
     }
-    status = camera->setFrameType("lrqmp");
+    status = camera->setFrameType(mode);
     if (status != Status::OK) {
         LOG(ERROR) << "Could not set camera frame type!";
-        return 0;
+        return -7;
     }
 
     status = camera->start();
     if (status != Status::OK) {
         LOG(ERROR) << "Could not start the camera!";
-        return 0;
+        return -8;
     }
-    aditof::Frame frame;
 
-    status = camera->requestFrame(&frame);
-    if (status != Status::OK) {
-        LOG(ERROR) << "Could not request frame!";
-        return 0;
+    uint32_t framesize;
+
+    if (mode == "mp") {
+        framesize = (1024 * 1024) * (3 * 12 + 16) / 8; // 3x 12-bit phases + 1x 16-bit AB frames
+    } else if (mode == "qmp") {
+        framesize = (512 * 512) * (16 + 16 + 8) / 8; // 16-bit radial + 16-bit AB + 8-bit Confidence frames
     } else {
-        LOG(INFO) << "succesfully requested frame!";
+        LOG(ERROR) << "Unable to determine the frame size";
+        return -9;
     }
 
-    uint16_t *data1;
-    status = frame.getData("ir", &data1);
+    LOG(INFO) << "'" << mode << "' expected frame size: " << framesize;
 
+    LOG(INFO) << "Getting " << FRAMES << " frames";
+
+    double st = get_seconds();
+    for (uint32_t cnt = 0; cnt < FRAMES;) {
+        aditof::Frame frame;
+        camera->requestStreamFrame(&frame);
+
+
+        cnt++;
+        LOG(INFO) << "Frame #: " << cnt << ", " << framesize << " bytes";
+
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(5) << cnt;
+        std::string formatted_value = ss.str();
+
+#ifdef SAVE_IR_FRAME
+        save_frame(frame, "ir",
+                   current_local_time_string() + "_" + formatted_value);
+#endif
+#ifdef SAVE_DEPTH_FRAME
+        save_frame(frame, "depth",
+                   current_local_time_string() + "_" + formatted_value);
+#endif
+#ifdef SAVE_RAW_FRAME
+        uint16_t *pData;
+        status = frame.getData("raw", &pData);
+
+        std::string filename = "raw_frame_" + current_local_time_string() +
+                        "_" + formatted_value + ".bin";
+
+        std::ofstream file(std::string(filename), std::ios::binary);
+        if (file.is_open()) {
+            file.write((const char *)pData, framesize);
+            file.close();
+        } else {
+            std::cerr << "Error opening file for writing" << std::endl;
+        }
+#endif
+    }
+    double et = get_seconds();
+
+    status = camera->stop();
     if (status != Status::OK) {
-        LOG(ERROR) << "Could not get frame data!";
-        return 0;
+        LOG(ERROR) << "Could not start the camera!";
+        return -10;
     }
 
-    if (!data1) {
-        LOG(ERROR) << "no memory allocated in frame";
-        return 0;
-    }
-
-    FrameDataDetails fDetails;
-    frame.getDataDetails("ir", fDetails);
-    for (unsigned int i = 0; i < fDetails.width * fDetails.height; ++i) {
-        std::cout << data1[i] << " ";
-    }
+    LOG(INFO) << "Frame rate = " << (static_cast<double>(FRAMES) / (et - st)) << "s";
 
     return 0;
 }

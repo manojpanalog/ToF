@@ -40,6 +40,7 @@
 #endif
 #include <unordered_map>
 
+
 struct CalibrationData {
     std::string mode;
     float gain;
@@ -174,6 +175,8 @@ aditof::Status NetworkDepthSensor::start() {
 
     Status status = static_cast<Status>(net->recv_buff[m_sensorIndex].status());
 
+    net->initSockets();
+
     return status;
 }
 
@@ -182,6 +185,8 @@ aditof::Status NetworkDepthSensor::stop() {
 
     Network *net = m_implData->handle.net;
     std::unique_lock<std::mutex> mutex_lock(m_implData->handle.net_mutex);
+
+    net->closeSockets();
 
     LOG(INFO) << "Stopping device";
 
@@ -373,7 +378,20 @@ aditof::Status NetworkDepthSensor::program(const uint8_t *firmware,
 aditof::Status NetworkDepthSensor::getFrame(uint16_t *buffer) {
     using namespace aditof;
 
+    Status status = Status::OK;
+
     Network *net = m_implData->handle.net;
+    std::unique_lock<std::mutex> mutex_lock(m_implData->handle.net_mutex);
+
+    if (!net->isServer_Connected()) {
+        LOG(WARNING) << "Not connected to server";
+        return Status::UNREACHABLE;
+    }
+
+    uint32_t size;
+    net->getFrame(buffer, size);
+
+/* Network *net = m_implData->handle.net;
     std::unique_lock<std::mutex> mutex_lock(m_implData->handle.net_mutex);
 
     if (!net->isServer_Connected()) {
@@ -409,7 +427,7 @@ aditof::Status NetworkDepthSensor::getFrame(uint16_t *buffer) {
     //when using ITOF camera the data is already deinterleaved, so a simple copy is enough
     memcpy(buffer, net->recv_buff[m_sensorIndex].bytes_payload(0).c_str(),
            net->recv_buff[m_sensorIndex].bytes_payload(0).length());
-
+*/
     return status;
 }
 

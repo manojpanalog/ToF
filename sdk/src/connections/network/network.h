@@ -46,6 +46,11 @@ struct NetworkHandle {
 
 class Network {
 
+private:
+    SOCKET m_clientSocket;
+    std::string m_ip;
+    uint32_t m_cnt;
+    std::vector<char> m_receivedData;
     static std::vector<lws_context *> context;
     static std::vector<lws *> web_socket;
 
@@ -70,6 +75,10 @@ class Network {
 
   public:
     int m_connectionId;
+    
+    int32_t closeSockets();
+    int32_t initSockets();
+    int32_t Network::getFrame(uint16_t *buffer, uint32_t &buffer_size);
 
     static payload::ClientRequest send_buff[MAX_CAMERA_NUM];
     static payload::ServerResponse recv_buff[MAX_CAMERA_NUM];

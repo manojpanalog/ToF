@@ -36,6 +36,12 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <iostream>
 
+constexpr uint32_t SERVER_PORT = 55001;
+constexpr uint32_t BUFFER_SIZE = 1024 * 16;
+constexpr uint32_t MAX_DATA_SIZE = 8 * 1024 * 1024;
+
+#pragma comment(lib, "Ws2_32.lib")
+
 #define RX_BUFFER_BYTES (20996420)
 #define MAX_RETRY_CNT 3
 
@@ -143,6 +149,8 @@ bool Network::isData_Received() {
 int Network::ServerConnect(const std::string &ip) {
     struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
+
+    m_ip = ip;
 
     info.port = CONTEXT_PORT_NO_LISTEN;
     info.protocols = protocols;
@@ -558,4 +566,99 @@ Network::~Network() {
 
         lws_context_destroy(context.at(m_connectionId));
     }
+}
+
+int32_t Network::initSockets() {
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0) {
+        std::cerr << "WSAStartup failed: " << result << std::endl;
+        return -1;
+    }
+
+    m_clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (m_clientSocket == INVALID_SOCKET) {
+        std::cerr << "Error creating socket: " << WSAGetLastError()
+                  << std::endl;
+        WSACleanup();
+        return -2;
+    }
+
+    sockaddr_in server_addr{};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    inet_pton(AF_INET, m_ip.c_str(), &server_addr.sin_addr);
+
+    if (connect(m_clientSocket, (sockaddr *)&server_addr,
+                sizeof(server_addr)) ==
+        SOCKET_ERROR) {
+        std::cerr << "Error connecting to server: " << WSAGetLastError()
+                  << std::endl;
+        closesocket(m_clientSocket);
+        WSACleanup();
+        return -3;
+    }
+
+    std::cout << "Connected to server at " << m_ip << ": " << SERVER_PORT
+              << std::endl;
+
+    m_cnt = 0;
+    m_receivedData.reserve(MAX_DATA_SIZE);
+
+    return 0;
+}
+
+int32_t Network::closeSockets() {
+    int32_t ret = closesocket(m_clientSocket);
+    WSACleanup();
+    return ret;
+}
+
+int32_t Network::getFrame(uint16_t *buffer, uint32_t &buffer_size) {
+    if (buffer == nullptr) {
+        return -1;
+    }
+    m_receivedData.clear();
+
+    uint16_t *frameDataLocation = nullptr;
+    uint32_t data_size;
+
+    m_receivedData.clear();
+
+    if (m_cnt % 10 == 0) {
+        char *ka = "keep alive!";
+        uint32_t num_bytes_sent = send(m_clientSocket, ka, strlen(ka) + 1, 0);
+        if (num_bytes_sent < 0) {
+            std::cerr << "Error sending data: " << strerror(errno)
+                        << std::endl;
+            closesocket(m_clientSocket);
+            WSACleanup();
+            return -2;
+        }
+        //std::cerr << ka << " sent" << std::endl;
+    }
+
+    int32_t bytes_received =
+        recv(m_clientSocket, (char *)&data_size, sizeof(data_size), 0);
+
+    while (m_receivedData.size() < data_size) {
+        char buffer[BUFFER_SIZE];
+        int bytes_received = recv(m_clientSocket, buffer, BUFFER_SIZE, 0);
+
+        if (bytes_received <= 0) {
+            std::cerr
+                << "Error receiving data or connection closed by server: "
+                << WSAGetLastError() << std::endl;
+            return -3;
+        }
+
+        m_receivedData.insert(m_receivedData.end(), buffer,
+                                buffer + bytes_received);
+    }
+
+    memcpy(buffer, m_receivedData.data(), data_size);
+    buffer_size = data_size;
+    m_cnt++;
+
+    return 0;
 }
