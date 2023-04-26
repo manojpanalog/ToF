@@ -241,6 +241,7 @@ PYBIND11_MODULE(aditofpython, m) {
             py::arg("availableFrameTypes"))
         .def("requestFrame", &aditof::Camera::requestFrame, py::arg("frame"),
              py::arg("cb") = nullptr)
+        .def("requestStreamFrame", &aditof::Camera::requestStreamFrame, py::arg("frame"))
         .def("getDetails", &aditof::Camera::getDetails, py::arg("details"))
         .def(
             "getAvailableControls",
