@@ -48,6 +48,12 @@
 #include <string>
 #include <sys/time.h>
 
+#include <algorithm>
+#include <thread>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/uio.h>
+
 using namespace google::protobuf::io;
 
 static int interrupted = 0;
@@ -261,6 +267,170 @@ int Network::callback_function(struct lws *wsi,
 
 void sigint_handler(int) { interrupted = 1; }
 
+int32_t send_frame(int client_socket, std::atomic<bool>& stop_flag, const uint32_t cntr) {
+    uint32_t cnt = 0;
+    aditof::Status status = sensorV4lBufAccess->waitForBuffer();
+    if (status != aditof::Status::OK) {
+        buff_send.set_status(static_cast<::payload::Status>(status));
+        LOG(INFO) << "send_frame: 1";
+        return -1;
+    }
+
+    struct v4l2_buffer buf;
+
+    status = sensorV4lBufAccess->dequeueInternalBuffer(buf);
+    if (status != aditof::Status::OK) {
+        buff_send.set_status(static_cast<::payload::Status>(status));
+        LOG(INFO) << "send_frame: 2";
+        return -2;
+    }
+
+    uint8_t *buffer;
+
+    status = sensorV4lBufAccess->getInternalBuffer(&buffer,
+                                                    buff_frame_length, buf);
+    if (status != aditof::Status::OK) {
+        LOG(INFO) << "send_frame: 3";
+        return -3;
+    }
+
+    if (buff_frame_to_send != NULL) {
+        free(buff_frame_to_send);
+        buff_frame_to_send = NULL;
+    }
+
+    buff_frame_to_send = (uint8_t *)malloc(buff_frame_length*sizeof(uint8_t));
+
+    memcpy(buff_frame_to_send, buffer, buff_frame_length * sizeof(uint8_t));
+
+    uint32_t bytes_sent_total = 0;
+    constexpr uint32_t BUFFER_SIZE = 1024*32;
+    uint32_t DATA_SIZE = buff_frame_length*sizeof(uint8_t);
+    ssize_t bytes_sent = send(client_socket, (char *)&DATA_SIZE, sizeof(DATA_SIZE), 0);
+
+    if (cntr % 10 == 0) {
+        int32_t num_bytes = recv(client_socket, buffer, (sizeof("keep alive!")+1) * sizeof(char), 0);
+        if (num_bytes == 0) {
+            LOG(INFO) << "Client disconnected";
+            return -6;
+        } else if (num_bytes < 0) {
+            LOG(INFO) << "Error in recv(): " << strerror(errno);
+            return -7;
+        } else {
+            LOG(INFO) << buffer << " received";
+        }
+    }
+
+    while (!stop_flag.load() && bytes_sent_total < DATA_SIZE) {
+#if 0
+        constexpr uint32_t MAX_SEND = 16;
+        struct iovec iov[MAX_SEND];
+
+        for (uint32_t bcnt = 0; bcnt < MAX_SEND; bcnt++) {
+            uint32_t sz = BUFFER_SIZE;
+            iov[bcnt].iov_base = buff_frame_to_send + bytes_sent_total + sz*bcnt;
+            iov[bcnt].iov_len = sz;
+        }
+        ssize_t bytes_sent = writev(client_socket, iov, MAX_SEND);
+#else
+        size_t bytes_sent = send(client_socket, buff_frame_to_send+bytes_sent_total, std::min(BUFFER_SIZE, DATA_SIZE - bytes_sent_total), 0);
+#endif
+        if (bytes_sent < 0) {
+            LOG(INFO) << "Error writing to the socket";
+            return -4;
+        }
+        bytes_sent_total += bytes_sent;
+    }
+    LOG(INFO) << cntr << " Packet sent: " << buff_frame_length;
+
+    status = sensorV4lBufAccess->enqueueInternalBuffer(buf);
+    if (status != aditof::Status::OK) {
+        buff_send.set_status(static_cast<::payload::Status>(status));
+        return -5;
+    }
+
+    buff_send.set_status(payload::Status::OK);
+    return 0;
+}
+
+double get_seconds() {
+    timespec time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+    return static_cast<double>(time.tv_sec) + static_cast<double>(time.tv_nsec) / 1e9;
+}
+
+void send_data_loop(std::atomic<bool>& stop_flag) {
+    int server_socket, client_socket;
+    LOG(INFO) << "Starting thread";
+    try {
+        const int PORT = 55001;
+        struct sockaddr_in server_addr, client_addr;
+        socklen_t client_addr_len;
+
+        server_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_socket < 0) {
+            std::cerr << "Error creating socket" << std::endl;
+            return;
+        }
+
+        int enable = 1;
+        if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
+            std::cerr << "Error setting socket option SO_REUSEADDR" << std::endl;
+            close(server_socket);
+            return;
+        }
+
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_addr.s_addr = INADDR_ANY;
+        server_addr.sin_port = htons(PORT);
+
+        if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+            std::cerr << "Error binding socket" << std::endl;
+            return;
+        }
+
+        if (listen(server_socket, 5) < 0) {
+            std::cerr << "Error listening on socket" << std::endl;
+            return;
+        }
+
+        while (true) {
+            client_addr_len = sizeof(client_addr);
+            client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
+            if (client_socket < 0) {
+                std::cerr << "Error accepting connection" << std::endl;
+                continue;
+            }
+
+            char client_ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+            std::cout << "Client connected: " << client_ip << ":" << ntohs(client_addr.sin_port) << std::endl;
+            break;
+        }
+
+        uint32_t cnt = 1;
+        double start_time = get_seconds();
+        while (!stop_flag.load()) {
+            if (send_frame(client_socket, stop_flag, cnt) >= 0) {
+                cnt++;
+            } else {
+                stop_flag.store(true);
+                aditof::Status status = camDepthSensor->stop();
+            }
+        }
+        double end_time = get_seconds();
+        double elapsed_time = end_time - start_time;
+        LOG(INFO) << ((double)cnt / (double)elapsed_time) << " fps" << std::endl;
+    } catch (std::exception& e) {
+        std::cerr << "Exception in send_data_loop: " << e.what() << std::endl;
+    }
+  close(client_socket);
+  close(server_socket);
+  LOG(INFO) << "Leave thread.";
+}
+
+std::thread t;
+std::atomic<bool> stop_flag{false};
 int main(int argc, char *argv[]) {
 
     signal(SIGINT, sigint_handler);
@@ -412,12 +582,21 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
     }
 
     case START: {
+        if (t.joinable()) {
+            t.join();
+        }
+        stop_flag.store(false);
+        t = std::thread(send_data_loop, std::ref(stop_flag));;
         aditof::Status status = camDepthSensor->start();
         buff_send.set_status(static_cast<::payload::Status>(status));
         break;
     }
 
     case STOP: {
+        stop_flag.store(true);
+        if (t.joinable()) {
+            t.join();
+        }
         aditof::Status status = camDepthSensor->stop();
         buff_send.set_status(static_cast<::payload::Status>(status));
 
