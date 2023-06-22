@@ -207,9 +207,11 @@ class SDK_API Camera {
     /**
      * @brief Set the AB invalidation threshold
      * @param[in] threshold
+     * @param[in] init_dc - if true, the threshold is updated in the DepthCompute lib too
      * @return Status
      */
-    virtual Status adsd3500SetABinvalidationThreshold(int threshold) = 0;
+    virtual Status adsd3500SetABinvalidationThreshold(int threshold,
+                                                      bool init_dc) = 0;
 
     /**
      * @brief Get the AB invalidation threshold
@@ -221,9 +223,11 @@ class SDK_API Camera {
     /**
      * @brief Set the confidence threshold
      * @param[in] threshold
+     * @param[in] init_dc - if true, the threshold is updated in the DepthCompute lib too
      * @return Status
      */
-    virtual Status adsd3500SetConfidenceThreshold(int threshold) = 0;
+    virtual Status adsd3500SetConfidenceThreshold(int threshold,
+                                                  bool init_dc) = 0;
 
     /**
      * @brief Get the confidence threshold
@@ -235,9 +239,11 @@ class SDK_API Camera {
     /**
      * @brief Enable/disable the JBLF filter
      * @param[in] enable
+     * @param[in] init_dc - if true, the threshold is updated in the DepthCompute lib too
      * @return Status
      */
-    virtual Status adsd3500SetJBLFfilterEnableState(bool enable) = 0;
+    virtual Status adsd3500SetJBLFfilterEnableState(bool enable,
+                                                    bool init_dc) = 0;
 
     /**
      * @brief Get the JBLF enabled state
@@ -249,9 +255,10 @@ class SDK_API Camera {
     /**
      * @brief Set the JBLF filter size
      * @param[in] size - Supported sizes are: 3, 5, 7
+     * @param[in] init_dc - if true, the threshold is updated in the DepthCompute lib too
      * @return Status
      */
-    virtual Status adsd3500SetJBLFfilterSize(int size) = 0;
+    virtual Status adsd3500SetJBLFfilterSize(int size, bool init_dc) = 0;
 
     /**
      * @brief Get the JBLF filter size
@@ -263,9 +270,11 @@ class SDK_API Camera {
     /**
      * @brief Set the radial threshold min
      * @param[in] threshold
+     * @param[in] init_dc - if true, the threshold is updated in the DepthCompute lib too
      * @return Status
      */
-    virtual Status adsd3500SetRadialThresholdMin(int threshold) = 0;
+    virtual Status adsd3500SetRadialThresholdMin(int threshold,
+                                                 bool init_dc) = 0;
 
     /**
      * @brief Get the radial threshold min
@@ -277,9 +286,11 @@ class SDK_API Camera {
     /**
      * @brief Set the radial threshold max
      * @param[in] threshold
+     * @param[in] init_dc - if true, the threshold is updated in the DepthCompute lib too
      * @return Status
      */
-    virtual Status adsd3500SetRadialThresholdMax(int threshold) = 0;
+    virtual Status adsd3500SetRadialThresholdMax(int threshold,
+                                                 bool init_dc) = 0;
 
     /**
      * @brief Get the radial threshold max

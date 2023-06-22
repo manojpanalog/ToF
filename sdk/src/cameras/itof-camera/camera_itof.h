@@ -133,17 +133,24 @@ class CameraItof : public aditof::Camera {
             &sensors) override;
     aditof::Status adsd3500SetToggleMode(int mode);
     aditof::Status adsd3500ToggleFsync();
-    aditof::Status adsd3500SetABinvalidationThreshold(int threshold) override;
+    aditof::Status
+    adsd3500SetABinvalidationThreshold(int threshold,
+                                       bool init_dc = true) override;
     aditof::Status adsd3500GetABinvalidationThreshold(int &threshold) override;
-    aditof::Status adsd3500SetConfidenceThreshold(int threshold) override;
+    aditof::Status adsd3500SetConfidenceThreshold(int threshold,
+                                                  bool init_dc = true) override;
     aditof::Status adsd3500GetConfidenceThreshold(int &threshold) override;
-    aditof::Status adsd3500SetJBLFfilterEnableState(bool enable) override;
+    aditof::Status
+    adsd3500SetJBLFfilterEnableState(bool enable, bool init_dc = true) override;
     aditof::Status adsd3500GetJBLFfilterEnableState(bool &enabled) override;
-    aditof::Status adsd3500SetJBLFfilterSize(int size) override;
+    aditof::Status adsd3500SetJBLFfilterSize(int size,
+                                             bool init_dc = true) override;
     aditof::Status adsd3500GetJBLFfilterSize(int &size) override;
-    aditof::Status adsd3500SetRadialThresholdMin(int threshold) override;
+    aditof::Status adsd3500SetRadialThresholdMin(int threshold,
+                                                 bool init_dc = true) override;
     aditof::Status adsd3500GetRadialThresholdMin(int &threshold) override;
-    aditof::Status adsd3500SetRadialThresholdMax(int threshold) override;
+    aditof::Status adsd3500SetRadialThresholdMax(int threshold,
+                                                 bool init_dc = true) override;
     aditof::Status adsd3500GetRadialThresholdMax(int &threshold) override;
     aditof::Status adsd3500GetSensorTemperature(uint16_t &tmpValue) override;
     aditof::Status adsd3500GetLaserTemperature(uint16_t &tmpValue) override;
@@ -354,6 +361,13 @@ class CameraItof : public aditof::Camera {
     */
     aditof::Status adsd3500GetFirmwareVersion(std::string &fwVersion,
                                               std::string &fwHash);
+    /**
+     * Update parameters for DepthCompute library, when they are
+     * changed in ADSD3500
+     * @param[in] parameter - parameter to be updated as in ini file
+     * @param[in] value - new value for parameter
+    */
+    void updateDepthComputeIniVals(std::string parameter, std::string value);
 
   private:
     using noArgCallable = std::function<aditof::Status()>;
@@ -403,6 +417,7 @@ class CameraItof : public aditof::Camera {
     int m_adsd3500ImagerType;
     int m_modesVersion;
     bool m_fwUpdated;
+    char tmp_buf[1000];
     aditof::Adsd3500Status m_adsd3500Status;
 };
 

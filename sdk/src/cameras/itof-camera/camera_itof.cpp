@@ -1890,7 +1890,11 @@ aditof::Status CameraItof::adsd3500GetFirmwareVersion(std::string &fwVersion,
     return status;
 }
 
-aditof::Status CameraItof::adsd3500SetABinvalidationThreshold(int threshold) {
+aditof::Status CameraItof::adsd3500SetABinvalidationThreshold(int threshold,
+                                                              bool init_dc) {
+    if (init_dc)
+        updateDepthComputeIniVals("abThreshMin", std::to_string(threshold));
+
     return m_depthSensor->adsd3500_write_cmd(0x0010, threshold);
 }
 
@@ -1899,7 +1903,11 @@ aditof::Status CameraItof::adsd3500GetABinvalidationThreshold(int &threshold) {
         0x0015, reinterpret_cast<uint16_t *>(&threshold));
 }
 
-aditof::Status CameraItof::adsd3500SetConfidenceThreshold(int threshold) {
+aditof::Status CameraItof::adsd3500SetConfidenceThreshold(int threshold,
+                                                          bool init_dc) {
+    if (init_dc)
+        updateDepthComputeIniVals("confThresh", std::to_string(threshold));
+
     return m_depthSensor->adsd3500_write_cmd(0x0011, threshold);
 }
 aditof::Status CameraItof::adsd3500GetConfidenceThreshold(int &threshold) {
@@ -1907,7 +1915,12 @@ aditof::Status CameraItof::adsd3500GetConfidenceThreshold(int &threshold) {
         0x0016, reinterpret_cast<uint16_t *>(&threshold));
 }
 
-aditof::Status CameraItof::adsd3500SetJBLFfilterEnableState(bool enable) {
+aditof::Status CameraItof::adsd3500SetJBLFfilterEnableState(bool enable,
+                                                            bool init_dc) {
+    if (init_dc)
+        updateDepthComputeIniVals("jblfApplyFlag", enable ? std::to_string(1)
+                                                          : std::to_string(0));
+
     return m_depthSensor->adsd3500_write_cmd(0x0013, enable ? 1 : 0);
 }
 aditof::Status CameraItof::adsd3500GetJBLFfilterEnableState(bool &enabled) {
@@ -1915,7 +1928,10 @@ aditof::Status CameraItof::adsd3500GetJBLFfilterEnableState(bool &enabled) {
         0x0017, reinterpret_cast<uint16_t *>(&enabled));
 }
 
-aditof::Status CameraItof::adsd3500SetJBLFfilterSize(int size) {
+aditof::Status CameraItof::adsd3500SetJBLFfilterSize(int size, bool init_dc) {
+    if (init_dc)
+        updateDepthComputeIniVals("jblfWindowSize", std::to_string(size));
+
     return m_depthSensor->adsd3500_write_cmd(0x0014, size);
 }
 aditof::Status CameraItof::adsd3500GetJBLFfilterSize(int &size) {
@@ -1923,7 +1939,11 @@ aditof::Status CameraItof::adsd3500GetJBLFfilterSize(int &size) {
         0x0018, reinterpret_cast<uint16_t *>(&size));
 }
 
-aditof::Status CameraItof::adsd3500SetRadialThresholdMin(int threshold) {
+aditof::Status CameraItof::adsd3500SetRadialThresholdMin(int threshold,
+                                                         bool init_dc) {
+    if (init_dc)
+        updateDepthComputeIniVals("radialThreshMin", std::to_string(threshold));
+
     return m_depthSensor->adsd3500_write_cmd(0x0027, threshold);
 }
 aditof::Status CameraItof::adsd3500GetRadialThresholdMin(int &threshold) {
@@ -1931,13 +1951,17 @@ aditof::Status CameraItof::adsd3500GetRadialThresholdMin(int &threshold) {
         0x0028, reinterpret_cast<uint16_t *>(&threshold));
 }
 
-aditof::Status CameraItof::adsd3500SetRadialThresholdMax(int threshold) {
+aditof::Status CameraItof::adsd3500SetRadialThresholdMax(int threshold,
+                                                         bool init_dc) {
+    if (init_dc)
+        updateDepthComputeIniVals("radialThreshMax", std::to_string(threshold));
     return m_depthSensor->adsd3500_write_cmd(0x0029, threshold);
 }
 aditof::Status CameraItof::adsd3500GetRadialThresholdMax(int &threshold) {
     return m_depthSensor->adsd3500_read_cmd(
         0x0030, reinterpret_cast<uint16_t *>(&threshold));
 }
+
 aditof::Status CameraItof::adsd3500GetSensorTemperature(uint16_t &tmpValue) {
     using namespace aditof;
     Status status = Status::OK;
@@ -2008,40 +2032,54 @@ aditof::Status CameraItof::getKeyValuePairsFromIni(
     return Status::OK;
 }
 
+void CameraItof::updateDepthComputeIniVals(std::string parameter,
+                                           std::string value) {
+    m_iniKeyValPairs[parameter] = value;
+
+    for (auto it = m_iniKeyValPairs.begin(); it != m_iniKeyValPairs.end();
+         it++) {
+        std::sprintf(tmp_buf + strlen(tmp_buf), "%s=%s\n", it->first.c_str(),
+                     it->second.c_str());
+    }
+    m_depthINIDataMap[m_ini_depth].size = sizeof(tmp_buf) / sizeof(tmp_buf[0]);
+    m_depthINIDataMap[m_ini_depth].p_data =
+        reinterpret_cast<unsigned char *>(tmp_buf);
+}
+
 void CameraItof::setAdsd3500WithIniParams(
     const std::map<std::string, std::string> &iniKeyValPairs) {
 
     auto it = iniKeyValPairs.find("abThreshMin");
     if (it != iniKeyValPairs.end()) {
-        adsd3500SetABinvalidationThreshold(std::stoi(it->second));
+        adsd3500SetABinvalidationThreshold(std::stoi(it->second), false);
     } else {
         LOG(WARNING) << "abThreshMin was not found in .ini file";
     }
 
     it = iniKeyValPairs.find("confThresh");
     if (it != iniKeyValPairs.end()) {
-        adsd3500SetConfidenceThreshold(std::stoi(it->second));
+        adsd3500SetConfidenceThreshold(std::stoi(it->second), false);
     } else {
         LOG(WARNING) << "confThresh was not found in .ini file";
     }
 
     it = iniKeyValPairs.find("radialThreshMin");
     if (it != iniKeyValPairs.end()) {
-        adsd3500SetRadialThresholdMin(std::stoi(it->second));
+        adsd3500SetRadialThresholdMin(std::stoi(it->second), false);
     } else {
         LOG(WARNING) << "radialThreshMin was not found in .ini file";
     }
 
     it = iniKeyValPairs.find("radialThreshMax");
     if (it != iniKeyValPairs.end()) {
-        adsd3500SetRadialThresholdMax(std::stoi(it->second));
+        adsd3500SetRadialThresholdMax(std::stoi(it->second), false);
     } else {
         LOG(WARNING) << "radialThreshMax was not found in .ini file";
     }
 
     it = iniKeyValPairs.find("jblfWindowSize");
     if (it != iniKeyValPairs.end()) {
-        adsd3500SetJBLFfilterSize(std::stoi(it->second));
+        adsd3500SetJBLFfilterSize(std::stoi(it->second), false);
     } else {
         LOG(WARNING) << "jblfWindowSize was not found in .ini file";
     }
@@ -2049,7 +2087,7 @@ void CameraItof::setAdsd3500WithIniParams(
     it = iniKeyValPairs.find("jblfApplyFlag");
     if (it != iniKeyValPairs.end()) {
         bool en = !(it->second == "0");
-        adsd3500SetJBLFfilterEnableState(en);
+        adsd3500SetJBLFfilterEnableState(en, false);
     } else {
         LOG(WARNING) << "jblfApplyFlag was not found in .ini file";
     }
