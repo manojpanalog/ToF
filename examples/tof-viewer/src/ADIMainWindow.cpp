@@ -1348,7 +1348,6 @@ void ADIMainWindow::displayInfoWindow(ImGuiWindowFlags overlayFlags) {
         ImGui::Text(" Laser Temperature: %5iC", *laserTemp);
         ImGui::SameLine();
         ImGui::Text(" | Sensor Temperature: %5iC", *sensorTemp);
-        s
     }
     ImGui::End();
 }
