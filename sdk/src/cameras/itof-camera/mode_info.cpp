@@ -259,6 +259,10 @@ aditof::Status ModeInfo::getSensorProperties(const std::string mode,
                     *width = 1024;
                     *height = 1024;
                     *pixelFormatIndex = 1;
+                } else if (mode == "lr-qnative") {
+                    *width = 1024;
+                    *height = 2304;
+                    *pixelFormatIndex = 1;
                 } else {
                     LOG(ERROR) << "Invalid configuration!";
                     return aditof::Status::INVALID_ARGUMENT;
