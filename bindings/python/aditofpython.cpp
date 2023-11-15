@@ -269,9 +269,12 @@ PYBIND11_MODULE(aditofpython, m) {
             py::arg("availableFrameTypes"))
         .def(
             "getFrameTypeNameFromId",
-            [](const aditof::Camera &camera, int id, std::string name) {
+            [](const aditof::Camera &camera, int id, py::list mode_names) {
+                std::string name;
                 aditof::Status status = camera.getFrameTypeNameFromId(id, name);
-                return std::make_pair(status, name);
+                mode_names.append(name);
+
+                return status;
             },
             py::arg("id"), py::arg("name"))
         .def("requestFrame", &aditof::Camera::requestFrame, py::arg("frame"),

@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.0)
 
 function(PopulateforPython targetdir)
     add_subdirectory(${targetdir})
-    
+
     file(GLOB PythonSources "${CMAKE_CURRENT_BINARY_DIR}/${targetdir}/*.py")
-    
+
     if(WIN32)
         add_custom_command( TARGET aditofpython POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_BINARY_DIR}/sdk/$<CONFIG>" "${CMAKE_CURRENT_BINARY_DIR}/${targetdir}/$<CONFIG>"
@@ -33,7 +33,7 @@ function(PopulateforPython targetdir)
                 add_custom_command(TARGET aditofpython POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${LWS_CMAKE_DIR}/../bin "${CMAKE_CURRENT_BINARY_DIR}/${targetdir}/$<CONFIG>")
             endif()
         endif()
-    
+
     endif()
 
 endfunction()
@@ -55,6 +55,7 @@ if (WITH_EXAMPLES)
     PopulateforPython("examples/first_frame")
     PopulateforPython("examples/streaming")
     PopulateforPython("examples/saveCCBToFile")
+    PopulateforPython("examples/data_collect")
 endif()
 
 configure_file(
