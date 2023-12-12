@@ -243,7 +243,7 @@ update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 pushd /home/${USERNAME}
 mkdir Workspace
 pushd Workspace
-TOF_GIT_LOCATION=${TOF_GIT_LOCATION:=https://github.com/analogdevicesinc/ToF.git}
+TOF_GIT_LOCATION=${TOF_GIT_LOCATION:=https://github.com/pagarwa3/ToF.git}
 echo "Clone ToF source code from: $TOF_GIT_LOCATION"
 git clone ${TOF_GIT_LOCATION}
 if [ -n ${BRANCH} ]; then
