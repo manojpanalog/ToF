@@ -235,12 +235,12 @@ CALL :install_websockets %config_type% %generator%
 ::build the project with the selected options
 pushd %build_dire%
 if %use_depth_compute_stubs%==1 (
-   cmake -G %generator% -DWITH_PYTHON=on -DCMAKE_PREFIX_PATH="%deps_install_dir%\glog;%deps_install_dir%\protobuf;%deps_install_dir%\libwebsockets" %source_dir% -DUSE_DEPTH_COMPUTE_STUBS=ON -DCMAKE_BUILD_TYPE=%config_type%
+   cmake -G %generator% -DWITH_PYTHON=off -DCMAKE_PREFIX_PATH="%deps_install_dir%\glog;%deps_install_dir%\protobuf;%deps_install_dir%\libwebsockets" %source_dir% -DUSE_DEPTH_COMPUTE_STUBS=ON -DCMAKE_BUILD_TYPE=%config_type%
    ) else (
 		if %use_depth_compute_opensource%==1 (
-			cmake -G %generator% -DWITH_PYTHON=on -DCMAKE_PREFIX_PATH="%deps_install_dir%\glog;%deps_install_dir%\protobuf;%deps_install_dir%\libwebsockets" %source_dir% -DUSE_DEPTH_COMPUTE_OPENSOURCE=ON -DCMAKE_BUILD_TYPE=%config_type%
+			cmake -G %generator% -DWITH_PYTHON=off -DCMAKE_PREFIX_PATH="%deps_install_dir%\glog;%deps_install_dir%\protobuf;%deps_install_dir%\libwebsockets" %source_dir% -DUSE_DEPTH_COMPUTE_OPENSOURCE=ON -DCMAKE_BUILD_TYPE=%config_type%
 		) else (
-			cmake -G %generator% -DWITH_PYTHON=on -DCMAKE_PREFIX_PATH="%deps_install_dir%\glog;%deps_install_dir%\protobuf;%deps_install_dir%\libwebsockets" %source_dir% -DCMAKE_BUILD_TYPE=%config_type%
+			cmake -G %generator% -DWITH_PYTHON=off -DCMAKE_PREFIX_PATH="%deps_install_dir%\glog;%deps_install_dir%\protobuf;%deps_install_dir%\libwebsockets" %source_dir% -DCMAKE_BUILD_TYPE=%config_type%
 		) 
 )
 cmake --build . --config %config_type% -j %threads%
@@ -318,7 +318,7 @@ EXIT /B 0
 set configuration=%~1
 echo "Installing websockets with config=%configuration% and generator=%generator%"
 pushd %deps_dir%
-if not exist "libwebsockets" ( git clone --branch v3.1-stable --depth 1  https://libwebsockets.org/repo/libwebsockets )
+if not exist "libwebsockets" ( git clone --branch v3.1-stable --depth 1 https://github.com/warmcat/libwebsockets)
 pushd libwebsockets
 if not exist "build_3_1_stable" ( mkdir build_3_1_stable )
 pushd build_3_1_stable

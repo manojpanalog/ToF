@@ -483,9 +483,10 @@ int main(int argc, char *argv[]) {
 
     LOG(INFO) << "Requesting " << n_frames << " frames!";
     auto start_time = std::chrono::high_resolution_clock::now();
+    LOG(INFO) << "start_time ";
     // Request the frames for the respective mode
     for (uint32_t loopcount = 0; loopcount < n_frames; loopcount++) {
-
+        LOG(INFO)<< "###########Before Request Frame";
         status = camera->requestFrame(&frame);
         if (status != Status::OK) {
             LOG(ERROR) << "Could not request frame!";
@@ -497,6 +498,7 @@ int main(int argc, char *argv[]) {
         height = fDetails.height;
         width = fDetails.width;
 
+        LOG(INFO) << "################# height "<< height <<" ################## width "<<width;
         frameType = "raw";
         std::string pixelCount;
 
@@ -539,6 +541,8 @@ int main(int argc, char *argv[]) {
         else if (frame_type == "raw") {
             aditof::FrameDataDetails rawFrameDetails;
             frame.getDataDetails("raw", rawFrameDetails);
+        LOG(INFO) << "################# rawFrameDetails.width "<< rawFrameDetails.width <<" ################## rawFrameDetails.height "<<rawFrameDetails.height;
+        LOG(INFO) << "################# rawFrameDetails.subelementsPerElement "<< rawFrameDetails.subelementsPerElement <<" ################## rawFrameDetails.subelementSize "<<rawFrameDetails.subelementSize;
 
             frame_size = rawFrameDetails.width * rawFrameDetails.height *
                          rawFrameDetails.subelementsPerElement *

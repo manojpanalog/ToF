@@ -784,17 +784,22 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
     uint8_t totalCaptures;
     ModeInfo::modeInfo aModeInfo;
 
+    LOG(INFO)<< "###########Inside Request Frame";
+
     if (frame == nullptr) {
         return Status::INVALID_ARGUMENT;
     }
+    LOG(INFO)<< "########### Before gett mode";
 
     status = getCurrentModeInfo(aModeInfo);
     if (status != Status::OK) {
         LOG(WARNING) << "Failed to get mode info";
         return status;
     }
+    LOG(INFO)<< "########### After mode";
 
     setAttributesByMode(*frame, aModeInfo);
+    LOG(INFO) << "################# aModeInfo "<< unsigned(aModeInfo.mode);
 
     FrameDetails frameDetails;
     frame->getDetails(frameDetails);
@@ -811,6 +816,7 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
     }
 
     uint16_t *frameDataLocation = nullptr;
+    LOG(INFO) << "############# m_targetFramesAreComputed: "<< m_targetFramesAreComputed;
     if (m_targetFramesAreComputed) {
         frame->getData("frameData", &frameDataLocation);
     } else {
@@ -820,6 +826,7 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
             LOG(ERROR) << "Frame type not found!";
             return Status::INVALID_ARGUMENT;
         } else {
+            LOG(INFO)<<"############ inside raw";
             frame->getData("raw", &frameDataLocation);
         }
     }
@@ -829,6 +836,7 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
     }
 
     status = m_depthSensor->getFrame(frameDataLocation);
+
     if (status != Status::OK) {
         LOG(WARNING) << "Failed to get frame from device";
         return status;
@@ -918,7 +926,7 @@ aditof::Status CameraItof::requestFrame(aditof::Frame *frame,
                 m_details.frameType.height, m_details.frameType.width);
         }
     }
-
+    LOG(INFO) << "END OF Request frame";
     return Status::OK;
 }
 
@@ -1310,16 +1318,21 @@ aditof::Status CameraItof::processFrame(uint8_t *rawFrame,
 aditof::Status CameraItof::getCurrentModeInfo(ModeInfo::modeInfo &info) {
     using namespace aditof;
     Status status = Status::OK;
+    LOG(INFO)<< "########### Inside Get current mode";
 
     ModeInfo *pModeInfo = ModeInfo::getInstance();
     if (pModeInfo) {
         uint8_t convertedMode;
+        LOG(INFO)<< "########### Inside Get current mode m_details.mode "<< m_details.mode;
         status = pModeInfo->convertCameraMode(m_details.mode, convertedMode);
         if (status != aditof::Status::OK) {
             LOG(ERROR) << "Invalid mode!";
             return aditof::Status::GENERIC_ERROR;
         }
+        LOG(INFO)<< "########### Inside Get current mode convertedMode "<< convertedMode;
         info = pModeInfo->getModeInfo(convertedMode);
+        LOG(INFO)<< "########### Inside Get current mode info.mode "<< info.mode;
+
         return Status::OK;
     }
     return Status::GENERIC_ERROR;

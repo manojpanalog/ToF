@@ -237,7 +237,6 @@ aditof::Status ModeInfo::getSensorProperties(const std::string mode,
         *pixelFormatIndex = 1;
         return aditof::Status::OK;
     }
-
     //ADSD3500 + ADSD3030
     if (g_imagerType == 1) {
         if (pixelFormat == "raw16_bits12_shift4") {
@@ -298,23 +297,28 @@ aditof::Status ModeInfo::getSensorProperties(const std::string mode,
 
         //ADSD3500 + ADSD3030
     } else {
-        //TO DO: add raw12 modes for adsd3030
+	//TO DO: add raw12 modes for adsd3030
+    LOG(INFO) << "pixelFormat: "<< pixelFormat;
+    LOG(INFO) << " mode: "<< mode;
+    LOG(INFO) << " m_mode: "<< unsigned(m_mode);
         if (pixelFormat == "raw8") {
             if (m_mode < 2) {
                 float totalBits = depthBits + abBits + confBits;
-                *width = frameWidth * totalBits / 8;
-                *height = frameHeight;
-                *pixelFormatIndex = 0;
+                *width = 1024;
+                *height = 2880;
+		        *pixelFormatIndex = 1;
             } else {
-                *width = 1280;
-                *height = 320;
-                *pixelFormatIndex = 0;
+                *width = 1024;
+                *height = 2880;
+                *pixelFormatIndex = 1;
             }
         } else {
             LOG(ERROR) << "Invalid configuration!";
             return aditof::Status::INVALID_ARGUMENT;
         }
     }
+    LOG(INFO) << "width : "<< *width;
+    LOG(INFO) << " height : "<< *height;
 
     return aditof::Status::OK;
 };
